@@ -1,8 +1,8 @@
-'use client'
+"use client";
 
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { CheckCircle2, Mail } from 'lucide-react'
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { CheckCircle2, Mail } from "lucide-react";
 
 export default function SuccessScreen() {
   return (
@@ -24,7 +24,8 @@ export default function SuccessScreen() {
                 Thank you for completing your ACCA registration.
               </p>
               <p className="text-sm text-muted-foreground">
-                Our team will review your application and contact you within 24-48 hours with further instructions.
+                Our team will review your application and contact you within
+                24-48 hours with further instructions.
               </p>
             </div>
 
@@ -36,7 +37,8 @@ export default function SuccessScreen() {
                     Check Your Email
                   </p>
                   <p className="text-blue-800 dark:text-blue-200 text-xs">
-                    A confirmation email has been sent to your registered email address with your registration details.
+                    A confirmation email has been sent to your registered email
+                    address with your registration details.
                   </p>
                 </div>
               </div>
@@ -44,10 +46,11 @@ export default function SuccessScreen() {
 
             <div className="space-y-2 text-sm text-muted-foreground">
               <p>
-                <span className="font-medium">Reference Number:</span> ACCA-2024-001847
+                <span className="font-medium">Reference Number:</span>{" "}
+                ACCA-2024-001847
               </p>
               <p>
-                <span className="font-medium">Status:</span>{' '}
+                <span className="font-medium">Status:</span>{" "}
                 <span className="inline-block px-2 py-1 rounded bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-xs font-medium">
                   Under Review
                 </span>
@@ -55,7 +58,10 @@ export default function SuccessScreen() {
             </div>
 
             <div className="pt-4 border-t space-y-2">
-              <Button className="w-full" onClick={() => window.location.reload()}>
+              <Button
+                className="w-full"
+                onClick={() => window.location.reload()}
+              >
                 Start New Registration
               </Button>
               <Button variant="outline" className="w-full">
@@ -64,11 +70,12 @@ export default function SuccessScreen() {
             </div>
 
             <p className="text-xs text-muted-foreground text-center">
-              Questions? Contact support@accaexams.com or call +44 1908 248250
+              Questions? Contact support@accaexams.com or call +234 814 862 363
+              2
             </p>
           </CardContent>
         </Card>
       </div>
     </div>
-  )
+  );
 }

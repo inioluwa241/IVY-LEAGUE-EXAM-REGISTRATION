@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import PersonalDetailsSection from "./sections/PersonalDetailsSection";
 import DocumentUploadSection from "./sections/DocumentUploadSection";
 import ExamSelectionSection from "./sections/ExamSelectionSection";
+import PaymentSection from "./sections/PaymentSection";
+import DateTimeSection from "./sections/DateTimeSection";
 import ReviewSection from "./sections/ReviewSection";
 import SuccessScreen from "./sections/SuccessScreen";
 import {
@@ -43,34 +45,18 @@ export interface FormData {
 }
 
 const EXAMS = [
-  {
-    id: "BT",
-    name: "BT - Business and Technology",
-    dates: ["2026-08-04", "2026-08-11", "2026-08-18"],
-  },
-  {
-    id: "MA",
-    name: "MA - Management Accounting",
-    dates: ["2026-08-05", "2026-08-12", "2026-08-19"],
-  },
-  {
-    id: "FA",
-    name: "FA - Financial Accounting",
-    dates: ["2026-08-06", "2026-08-13", "2026-08-20"],
-  },
-  {
-    id: "CBL",
-    name: "CBL - Corporate and Business Law",
-    dates: ["2026-08-07", "2026-08-14", "2026-08-21"],
-  },
+  { id: "BT", name: "BT - Business and Technology" },
+  { id: "MA", name: "MA - Management Accounting" },
+  { id: "FA", name: "FA - Financial Accounting" },
+  { id: "CBL", name: "CBL - Corporate and Business Law" },
 ];
-
-const TIME_SLOTS = ["09:45", "12:15", "14:15"];
 
 export default function AccaRegistrationForm() {
   const [currentSection, setCurrentSection] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [prices, setPrices] = useState<Record<string, number>>({});
+  const [paymentReference, setPaymentReference] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<FormData>({
     personalDetails: {
@@ -92,33 +78,41 @@ export default function AccaRegistrationForm() {
       id: exam.id,
       name: exam.name,
       selected: false,
-      date: exam.dates[0],
-      timeSlot: TIME_SLOTS[0],
+      date: "",
+      timeSlot: "",
     })),
   });
 
+  useEffect(() => {
+    async function loadPrices() {
+      const { data, error } = await supabase
+        .from("exam_prices")
+        .select("exam, price_kobo");
+      if (error) {
+        console.error("Failed to load exam prices", error);
+        return;
+      }
+      const priceMap: Record<string, number> = {};
+      data.forEach((row: { exam: string; price_kobo: number }) => {
+        priceMap[row.exam] = row.price_kobo;
+      });
+      setPrices(priceMap);
+    }
+    loadPrices();
+  }, []);
+
   const updatePersonalDetails = (details: FormData["personalDetails"]) => {
-    setFormData((prev) => ({
-      ...prev,
-      personalDetails: details,
-    }));
+    setFormData((prev) => ({ ...prev, personalDetails: details }));
   };
 
   const updateDocuments = (documents: FormData["documents"]) => {
-    setFormData((prev) => ({
-      ...prev,
-      documents,
-    }));
+    setFormData((prev) => ({ ...prev, documents }));
   };
 
   const updateExams = (exams: FormData["exams"]) => {
-    setFormData((prev) => ({
-      ...prev,
-      exams,
-    }));
+    setFormData((prev) => ({ ...prev, exams }));
   };
 
-  // 3. completion check — add gender & residenceAddress since they're required
   const isPersonalDetailsComplete =
     formData.personalDetails.firstName &&
     formData.personalDetails.lastName &&
@@ -133,22 +127,25 @@ export default function AccaRegistrationForm() {
     formData.documents.ID.uploaded &&
     formData.documents.payment.uploaded;
 
-  const areExamsSelected = formData.exams.some((exam) => exam.selected);
+  const selectedExams = formData.exams.filter((exam) => exam.selected);
+  const areExamsSelected = selectedExams.length > 0;
+  const isPaymentComplete = paymentReference !== null;
+  const areDatesComplete =
+    selectedExams.length > 0 &&
+    selectedExams.every((exam) => exam.date && exam.timeSlot);
 
   const canProceedToDocuments = isPersonalDetailsComplete;
   const canProceedToExams = canProceedToDocuments && areDocumentsComplete;
-  const canSubmit = canProceedToExams && areExamsSelected;
+  const canProceedToPayment = canProceedToExams && areExamsSelected;
+  const canProceedToDateTime = canProceedToPayment && isPaymentComplete;
+  const canSubmit = canProceedToDateTime && areDatesComplete;
 
   const handleNext = () => {
-    if (currentSection < 3) {
-      setCurrentSection(currentSection + 1);
-    }
+    if (currentSection < 5) setCurrentSection(currentSection + 1);
   };
 
   const handlePrevious = () => {
-    if (currentSection > 0) {
-      setCurrentSection(currentSection - 1);
-    }
+    if (currentSection > 0) setCurrentSection(currentSection - 1);
   };
 
   const handleSubmit = async () => {
@@ -181,6 +178,9 @@ export default function AccaRegistrationForm() {
         !documents.payment.file
       ) {
         throw new Error("All 3 documents must be uploaded before submitting");
+      }
+      if (!paymentReference) {
+        throw new Error("Payment must be completed before submitting");
       }
 
       const [passportPhotoPath, idDocumentPath, paymentEvidencePath] =
@@ -218,6 +218,7 @@ export default function AccaRegistrationForm() {
             passportPhotoPath,
             idDocumentPath,
             paymentEvidencePath,
+            paystackReference: paymentReference,
             registrations,
           }),
         },
@@ -231,7 +232,6 @@ export default function AccaRegistrationForm() {
       setShowSuccess(true);
     } catch (err) {
       console.error(err);
-      // TODO: show error to user — e.g. a toast, or a state flag
     } finally {
       setIsSubmitting(false);
     }
@@ -241,7 +241,8 @@ export default function AccaRegistrationForm() {
     return <SuccessScreen />;
   }
 
-  const progress = ((currentSection + 1) / 4) * 100;
+  const progress = ((currentSection + 1) / 6) * 100;
+
   const sections = [
     {
       title: "Personal Details",
@@ -265,9 +266,33 @@ export default function AccaRegistrationForm() {
     },
     {
       title: "Exam Selection",
-      description: "Choose your exams and schedule",
+      description: "Choose which exams you're registering for",
       component: (
-        <ExamSelectionSection data={formData.exams} onUpdate={updateExams} />
+        <ExamSelectionSection
+          data={formData.exams}
+          onUpdate={updateExams}
+          prices={prices}
+        />
+      ),
+    },
+    {
+      title: "Payment",
+      description: "Pay for your selected exams",
+      component: (
+        <PaymentSection
+          exams={formData.exams}
+          prices={prices}
+          email={formData.personalDetails.email}
+          paymentReference={paymentReference}
+          onPaymentSuccess={setPaymentReference}
+        />
+      ),
+    },
+    {
+      title: "Exam Date & Time",
+      description: "Pick your preferred date and time for each exam",
+      component: (
+        <DateTimeSection data={formData.exams} onUpdate={updateExams} />
       ),
     },
     {
@@ -277,13 +302,20 @@ export default function AccaRegistrationForm() {
     },
   ];
 
+  const nextDisabled =
+    (currentSection === 0 && !canProceedToDocuments) ||
+    (currentSection === 1 && !canProceedToExams) ||
+    (currentSection === 2 && !canProceedToPayment) ||
+    (currentSection === 3 && !canProceedToDateTime) ||
+    (currentSection === 4 && !areDatesComplete);
+
   return (
     <div className="min-h-screen bg-background py-8 px-4">
       <div className="max-w-2xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">ACCA Registration</h1>
           <p className="text-muted-foreground">
-            Complete your registration in 4 simple steps
+            Complete your registration in 6 simple steps
           </p>
         </div>
 
@@ -315,15 +347,8 @@ export default function AccaRegistrationForm() {
                 Previous
               </Button>
               <div className="flex-1" />
-              {currentSection < 3 ? (
-                <Button
-                  onClick={handleNext}
-                  disabled={
-                    (currentSection === 0 && !canProceedToDocuments) ||
-                    (currentSection === 1 && !canProceedToExams) ||
-                    (currentSection === 2 && !areExamsSelected)
-                  }
-                >
+              {currentSection < 5 ? (
+                <Button onClick={handleNext} disabled={nextDisabled}>
                   Next
                 </Button>
               ) : (

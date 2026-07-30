@@ -77,7 +77,7 @@ export default function PersonalDetailsSection({ data, onUpdate }: Props) {
             type="tel"
             value={data.phone}
             onChange={(e) => handleChange("phone", e.target.value)}
-            placeholder="+44 7123 456789"
+            placeholder="+234 91 391 16045"
           />
         </div>
         <div className="space-y-2">
